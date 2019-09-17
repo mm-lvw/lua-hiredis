@@ -14,7 +14,7 @@ extern "C" {
 }
 #endif
 
-#include "hiredis/hiredis.h"
+#include "hiredis.h"
 
 #if 0
   #define SPAM(a) printf a
@@ -23,7 +23,7 @@ extern "C" {
 #endif
 
 #define LUAHIREDIS_VERSION     "lua-hiredis 0.2.1"
-#define LUAHIREDIS_COPYRIGHT   "Copyright (C) 2011—2013, lua-hiredis authors"
+#define LUAHIREDIS_COPYRIGHT   "Copyright (C) 2011—2012, lua-hiredis authors"
 #define LUAHIREDIS_DESCRIPTION "Bindings for hiredis Redis-client library"
 
 #define LUAHIREDIS_CONN_MT   "lua-hiredis.connection"
@@ -103,7 +103,7 @@ static int push_new_const(
 
   if (luaL_newmetatable(L, LUAHIREDIS_CONST_MT))
   {
-    luaL_register(L, NULL, CONST_MT);
+      luaL_setfuncs(L, CONST_MT, 0);
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
     lua_pushliteral(L, LUAHIREDIS_CONST_MT);
@@ -436,18 +436,12 @@ static int lhiredis_connect(lua_State * L)
   luahiredis_Connection * pResult = NULL;
   redisContext * pContext = NULL;
 
-  const char * host_or_socket = luaL_checkstring(L, 1);
+  const char * host = luaL_checkstring(L, 1);
+  int port = luaL_checkinteger(L, 2);
 
-  /* TODO: Support Timeout and UnixTimeout flavors */
-  if (lua_isnoneornil(L, 2))
-  {
-    pContext = redisConnectUnix(host_or_socket);
-  }
-  else
-  {
-    pContext = redisConnect(host_or_socket, luaL_checkint(L, 2));
-  }
+  /* TODO: Support Timeout, Unix and UnixTimeout flavors */
 
+  pContext = redisConnect(host, port);
   if (!pContext)
   {
     luaL_checkstack(L, 2, "not enough stack to push error");
@@ -596,7 +590,7 @@ LUALIB_API int luaopen_hiredis(lua_State * L)
   /*
   * Register module
   */
-  luaL_register(L, "hiredis", E);
+	luaL_newlib(L, E);
 
   /*
   * Register module information
@@ -626,7 +620,7 @@ LUALIB_API int luaopen_hiredis(lua_State * L)
 
   if (luaL_newmetatable(L, LUAHIREDIS_STATUS_MT))
   {
-    luaL_register(L, NULL, STATUS_MT);
+    luaL_setfuncs(L, STATUS_MT, 0);
     lua_pushliteral(L, LUAHIREDIS_STATUS_MT);
     lua_setfield(L, -2, "__metatable");
   }

@@ -8,12 +8,6 @@ local CACHED_ERR = nil
 
 --------------------------------------------------------------------------------
 
-local UDS_SOCKET = "/var/run/redis/redis.sock"
-local HOST = "localhost"
-local PORT = 6379
-
---------------------------------------------------------------------------------
-
 assert(type(hiredis.NIL == "table"))
 assert(hiredis.NIL.name == "NIL")
 assert(hiredis.NIL.type == hiredis.REPLY_NIL)
@@ -59,44 +53,7 @@ assert(hiredis.connect("badaddress", 1) == nil)
 
 --------------------------------------------------------------------------------
 
-assert(hiredis.connect("/var/run/redis/inexistant.sock") == nil)
-
---------------------------------------------------------------------------------
-
-local ok, posix = pcall(require, "posix")
-if not ok then
-  print("WARNING: luaposix not found, can't test Unix Domain Socket support")
-  print("         consider installing it as follows:")
-  print("")
-  print("         sudo luarocks install luaposix")
-  print("")
-elseif not posix.stat(UDS_SOCKET) then
-  print("WARNING: Redis Unix domain socket file not found.")
-  print("         Can't test Unix Domain Socket support.")
-  print("         consider running Redis as follows:")
-  print("")
-  print("         sudo redis-server --unixsocket ".. UDS_SOCKET .. " --port 0")
-  print("")
-else
-  local net_unix = assert(io.open("/proc/net/unix", "r"))
-  local sockets = assert(net_unix:read("*a"))
-  net_unix:close()
-  if not sockets:find(UDS_SOCKET, nil, true) then
-    print("WARNING: Redis Unix domain socket file not open.")
-    print("         Can't test Unix Domain Socket support.")
-    print("         consider running Redis as follows:")
-    print("")
-    print("        sudo redis-server --unixsocket ".. UDS_SOCKET .. " --port 0")
-    print("")
-  else
-    local conn = assert(hiredis.connect(UDS_SOCKET))
-    assert(conn:command("quit"))
-  end
-end
-
---------------------------------------------------------------------------------
-
-local conn = assert(hiredis.connect(HOST, PORT))
+local conn = assert(hiredis.connect("localhost", 6379))
 
 --------------------------------------------------------------------------------
 
@@ -155,7 +112,7 @@ do
     a[#a + 1] = "SET"
   end
   -- Too many arguments
-  assert(pcall(conn.command, conn, unpack(a)) == false)
+  assert(pcall(conn.command, conn, table.unpack(a)) == false)
 end
 
 --------------------------------------------------------------------------------
@@ -213,7 +170,7 @@ local t = assert(conn:command("EXEC"))
 assert(t[1] == hiredis.status.OK)
 assert(t[2].type == hiredis.REPLY_ERROR)
 assert(
-    t[2].name == "ERR Operation against a key holding the wrong kind of value"
+    t[2].name == "WRONGTYPE Operation against a key holding the wrong kind of value"
   )
 assert(t[3] == 2)
 
@@ -234,7 +191,7 @@ local t = assert(conn:get_reply()) -- EXEC
 assert(t[1] == hiredis.status.OK)
 assert(t[2].type == hiredis.REPLY_ERROR)
 assert(
-    t[2].name == "ERR Operation against a key holding the wrong kind of value"
+    t[2].name == "WRONGTYPE Operation against a key holding the wrong kind of value"
   )
 assert(t[3] == 2)
 
